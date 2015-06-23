@@ -48,7 +48,7 @@ def KD(m, n):
 # returns : new_weights updated weight matrix
 def LinearGHA(in_vec, weights, out_vec, LR):
 	LT = np.tril(np.dot(out_vec, out_vec.T))
-	new_weights = LR * (np.dot(out_vec, in_vec.T) - np.dot(LT,weights))
+	new_weights = weights + LR * (np.dot(out_vec, in_vec.T) - np.dot(LT,weights))
 	return new_weights
 
 
