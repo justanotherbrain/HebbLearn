@@ -46,6 +46,8 @@ def KD(m, n):
 # out_vec : Mx1 dimensional numpy output vector
 # LR : Learning rate, in (0,1)
 # returns : new_weights updated weight matrix
+#
+# There is a bug hiding around here...
 def LinearGHA(in_vec, weights, out_vec, LR):
 	LT = np.tril(np.dot(out_vec, out_vec.T))
 	new_weights = LR * (np.dot(out_vec, in_vec.T) - np.dot(LT,weights))
