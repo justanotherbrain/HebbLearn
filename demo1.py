@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import sys
 import HebbLearn as hl
 import numpy as np
@@ -31,3 +32,8 @@ print(weights)
 
 
 
+=======
+import HebbLearn as hl
+w = hl.Demo_LinearGHA()
+hl.VisualizeFilter(w)
+>>>>>>> 50a818c4c8b6643b3a5027370f6f4c03eea9422a
