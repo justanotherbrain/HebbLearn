@@ -1,7 +1,7 @@
-<<<<<<< HEAD
 import sys
 import HebbLearn as hl
 import numpy as np
+import matplotlib.pyplot as plt
 
 goat = hl.rgb2gray(hl.LoadImage('goat.jpg'))
 if np.max(goat)>1:
@@ -10,16 +10,18 @@ if np.max(goat)>1:
 plt.imshow(goat, cmap=plt.get_cmap('gray'))
 plt.show()
 
-if len(sys.argv)>0:
-	filter_size = sys.argv[0]
-	iterations = sys.argv[1]
-	out_dimension = sys.argv[2]
+if len(sys.argv)>1:
+	filter_size = sys.argv[1]
+	iterations = sys.argv[2]
+	out_dimension = sys.argv[3]
+	LR = sys.argv[4]
 else:
 	filter_size = 8
 	iterations = 2
 	out_dimension = 8
+	LR = .000001
 
-weights = hl.TrainSlidingLinearGHA(goat, filter_size, out_dimension, iterations)
+weights = hl.TrainSlidingLinearGHA(goat, filter_size, out_dimension, LR, iterations)
 
 output = hl.ReconstructSlidingLinearGHA(goat, weights, filter_size)
 plt.imshow(output, cmap=plt.get_cmap('gray'))
@@ -30,10 +32,3 @@ print(weights)
 
 
 
-
-
-=======
-import HebbLearn as hl
-w = hl.Demo_LinearGHA()
-hl.VisualizeFilter(w)
->>>>>>> 50a818c4c8b6643b3a5027370f6f4c03eea9422a
