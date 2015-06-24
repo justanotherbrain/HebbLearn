@@ -50,8 +50,8 @@ def KD(m, n):
 # There is a bug hiding around here...
 def LinearGHA(in_vec, weights, out_vec, LR):
 	LT = np.tril(np.dot(out_vec, out_vec.T))
-	new_weights = weights + LR * (np.dot(out_vec, in_vec.T) - np.dot(LT,weights))
-	return new_weights
+        new_weights = weights + LR * (np.dot(out_vec, in_vec.T) - np.dot(LT,weights))
+        return new_weights/np.max(new_weights)
 
 
 
@@ -103,7 +103,7 @@ def ResizeImage(im, filter_size):
 # filter_size : dimension of filter
 # out_dimension : size of the output vector
 # iterations : number of iterations over input_image
-def TrainSlidingLinearGHA(input_image, filter_size, out_dimension, iterations):
+def TrainSlidingLinearGHA(input_image, filter_size, out_dimension, LR, iterations):
 	im = ResizeImage(input_image, filter_size)
 	num_rows = im.shape[0]/filter_size
 	num_cols = im.shape[1]/filter_size
@@ -120,8 +120,8 @@ def TrainSlidingLinearGHA(input_image, filter_size, out_dimension, iterations):
 				frame = im[row_start:row_end, col_start:col_end]
 				in_vec = np.reshape(frame,(filter_size*filter_size,1))
 				out_vec = GetOutput_LinearGHA(in_vec, weights)
-				LR = 1/t
-				LR = 0.01 # empirical fix point for now
+				#LR = .00001
+				#LR = 0.001 # empirical fix point for now
 				weights = LinearGHA(in_vec, weights, out_vec, LR)
 				t=t+1
 	return weights
@@ -164,6 +164,9 @@ def ReconstructSlidingLinearGHA(input_image, weights, filter_size):
 # iterations : number of iterations to repeat training over entire sample set
 def TrainFixedLinearGHA(input_images, filter_size, iterations):
 	return 0
+
+
+
 # InitializeWeights
 # Initialize the weight matrix (random)
 #
@@ -178,20 +181,31 @@ def Demo_LinearGHA():
 	goat = rgb2gray(LoadImage('goat.jpg'))
 	if np.max(goat)>1:
 		goat = goat/255
-	
+
 	plt.imshow(goat, cmap=plt.get_cmap('gray'))
 	plt.show()
 	
 	filter_size = 8
-	iterations = 2
+	iterations = 20
 	out_dimension = 8
-	
-	weights = TrainSlidingLinearGHA(goat, filter_size, out_dimension, iterations) 
+	LR = 0.0001
+
+	weights = TrainSlidingLinearGHA(goat, filter_size, out_dimension, LR, iterations) 
 	
 	output = ReconstructSlidingLinearGHA(goat, weights, filter_size)
 	plt.imshow(output, cmap=plt.get_cmap('gray'))
 	plt.show()
 	
-	print(weights)
+	return weights
+
+
+# VisualizeFilter
+def VisualizeFilter(weights):
+    fs = np.sqrt(weights.shape[1])
+    for i in range(weights.shape[0]):
+        f = np.reshape(weights[i,:], (fs,fs))
+        plt.imshow(f, cmap=plt.get_cmap('gray'))
+        plt.show()
+
 
 
