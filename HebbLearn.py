@@ -128,9 +128,9 @@ def TrainSlidingLinearGHA(input_image, filter_size, out_dimension, LR, iteration
 
 
 
-# ReconstructSlidingLinearGHA
-# Reconstruct an output image by passing input image through weights
-def ReconstructSlidingLinearGHA(input_image, weights, filter_size):
+# SlidingMaskLinearGHA
+# Pass input image through weights as if weights are mask
+def SlidingMaskLinearGHA(input_image, weights, filter_size):
 	im = ResizeImage(input_image, filter_size)
 	num_rows = im.shape[0]/filter_size
 	num_cols = im.shape[1]/filter_size
@@ -151,6 +151,28 @@ def ReconstructSlidingLinearGHA(input_image, weights, filter_size):
 				out_vec = out_vec + (weights[o,:]*in_vec.T)/out_dimension
 			output[row_start:row_end,col_start:col_end] = np.reshape(out_vec,(filter_size,filter_size))
 	return output
+
+
+# SlidingImageReconstruction
+# Reconstruct image by passing through filter and reconstructing
+def SlidingImageReconstruction(input_image, weights, filter_size):
+    im = ResizeImage(input_image, filter_size)
+    num_rows = im.shape[0]/filter_size
+    num_cols = im.shape[1]/filter_size
+    out_dimension = weights.shape[0]
+    output = np.zeros((im.shape[0],im.shape[1]))
+    for c in range(num_cols):
+        for r in range(num_rows):
+            row_start = r*filter_size
+            row_end = (r+1)*filter_size
+            col_start = c*filter_size
+            col_end = (c+1)*filter_size
+
+            frame = im[row_start:row_end, col_start:col_end]
+            in_vec = np.reshape(frame,(filter_size*filter_size,1))
+            out_vec = np.dot(weights.T, np.dot(weights, in_vec))
+            output[row_start:row_end,col_start:col_end] = np.reshape(out_vec,(filter_size,filter_size))
+    return output
 
 
 # TrainFixedLinearGHA
@@ -192,7 +214,7 @@ def Demo_LinearGHA():
 
 	weights = TrainSlidingLinearGHA(goat, filter_size, out_dimension, LR, iterations) 
 	
-	output = ReconstructSlidingLinearGHA(goat, weights, filter_size)
+	output = SlidingMaskLinearGHA(goat, weights, filter_size)
 	plt.imshow(output, cmap=plt.get_cmap('gray'))
 	plt.show()
 	
