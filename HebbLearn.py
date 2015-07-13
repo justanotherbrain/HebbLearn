@@ -22,6 +22,12 @@ def rgb2gray(rgb):
 def LoadImage(file_name):
     return misc.imread(file_name)
 
+# Load Video
+# Load a video as a numpy array
+#
+# file_name : directory of video file to open
+# returns : tensor of image (b&w)
+
 
 # KD
 # The Kronecker Delta Function - returns 1,
@@ -172,11 +178,112 @@ class SlidingLinearGHA():
         fs = np.sqrt(weights.shape[1])
         for i in range(weights.shape[0]):
             f = np.reshape(weights[i,:], (fs,fs))
-            plt.imshow(f, cmap=plt.get_cmap('gray'))
+            plt.imshow(f, cmap=plt.get_cmap('gray'),interpolation='none')
+            plt.colorbar()
             plt.show()
 
 
 
-class FixedLinearGHA:
-    #
-    a = 1
+
+# The TemporalGHA Algorithm
+# This module is for training on video in order to predict frames using
+# a simple Hebbian update rule.
+#
+# This algorithm saves a tensor of non-overlapping weight matrices that 
+# correspond to an area of overlap
+class TemporalGHA:
+    def LinearGHA(self, in_vec, weights, out_vec, LR):
+        LT = np.tril(np.dot(out_vec, out_vec.T))
+        new_weights = weights + LR * (np.dot(out_vec, in_vec.T) - np.dot(LT,weights))
+        return new_weights/np.max(new_weights)
+
+
+    def ResizeFrame(self, im, filter_size):
+        return im[0:(im.shape[0]-(im.shape[0]%filter_size)),0:(im.shape[1]-(im.shape[0]%filter_size))]
+
+
+    def InitializeWeights(self, im, filter_size, out_dimension):
+        num_rows = im.shape[0]/filter_size
+        num_cols = im.shape[1]/filter_size
+        return np.random.rand(out_dimension,(filter_size*filter_size),num_rows*num_cols)
+    
+    
+    def Train(self, input_video, filter_size, out_dimension, LR, time_filter):
+        num_frames = np.shape(input_video)[2] 
+        # crop video to correct dimensions
+        temp = self.ResizeFrame(input_video[:,:,0], filter_size)
+        vid = np.zeros((np.shape(temp)[0],np.shape(temp)[1],num_frames))
+        for t in range(num_frames):
+            vid[:,:,t] = self.ResizeFrame(input_video[:,:,t], filter_size)
+
+        num_rows = vid.shape[0]/filter_size
+        num_cols = vid.shape[1]/filter_size
+        weights = self.InitializeWeights(vid[:,:,0], filter_size, out_dimension)
+        for f in range(filter_size, num_frames):
+            w = 0
+            for c in range(num_cols-1):
+                for r in range(num_rows-1):
+                    row_start = r*filter_size
+                    row_end = (r+1)*filter_size
+                    col_start = c*filter_size
+                    col_end = (c+1)*filter_size
+                    
+                    frame = np.zeros(filter_size, filter_size)
+                    for t in range(filter_size):
+                        frame = frame + np.multiply(vid[row_start:row_end, col_start:col_end, f-t], time_filter[:,:,t])
+                    in_vec = np.reshape(frame,(filter_size*filter_size,1))
+                    out_vec = self.GetOutput(in_vec, weights)
+                    weights[:,:,w] = self.LinearGHA(in_vec, weights, out_vec, LR)
+                    w = w+1
+        return weights
+    
+    
+    
+    
+    def GetTimeFilter(self, filter_size):
+        n = filter_size
+        time_filter = np.zeros((n, n, np.ceil(n/2)+1))
+        for t in range(int(np.ceil(n/2))+1):
+            if (t==0):
+                time_filter[np.floor(n/2),np.floor(n/2),t] = 1
+            else:
+                o = int(np.floor(n/2) - t) # origin
+                c = int(o + (t*2)) # ceiling
+                for i in range(o,c+1):
+                    time_filter[o,i,t] = 1
+                    time_filter[c,i,t] = 1
+                    time_filter[i,o,t] = 1
+                    time_filter[i,c,t] = 1
+        return time_filter
+
+    def VideoReconstruction(self, input_video, weights, filter_size, time_filter):
+        num_frames = np.shape(input_video)[2]
+        # crop video to correct dimensions
+        temp = self.ResizeFrame(input_video[:,:,0], filter_size)
+        vid = np.zeros((np.shape(temp)[0],np.shape(temp)[1],num_frames))
+        for t in range(num_frames):
+            vid[:,:,t] = self.ResizeFrame(input_video[:,:,t], filter_size)
+        
+        num_rows = im.shape[0]/filter_size
+        num_cols = im.shape[1]/filter_size
+        out_dimension = weights.shape[0]
+        output = np.zeros((temp.shape[0],temp.shape[1],num_frames))
+        for f in range(filter_size, num_frame):
+            w = 0
+            for c in range(num_cols):
+                for r in range(num_rows):
+                    row_start = r*filter_size
+                    row_end = (r+1)*filter_size
+                    col_start = c*filter_size
+                    col_end = (c+1)*filter_size
+                    
+                    frame = np.zeros(filter_size,filter_size)
+                    for t in range(filter_size):
+                        frame = frame + np.multiply(vid[row_start:row_end, col_start:col_end, f-t], time_filter[:,:,t])
+
+                    in_vec = np.reshape(frame,(filter_size*filter_size,1))
+                    out_vec = np.dot(weights.T, np.dot(weights[:,:,w], in_vec))
+                    output[row_start:row_end,col_start:col_end,f] = np.reshape(out_vec,(filter_size,filter_size))
+                    w = w + 1
+        return output
+

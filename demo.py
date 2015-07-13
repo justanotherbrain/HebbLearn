@@ -1,5 +1,5 @@
 import sys
-import HebbLearn1 as hl
+import HebbLearn as hl
 import numpy as np
 import matplotlib.pyplot as plt
 
