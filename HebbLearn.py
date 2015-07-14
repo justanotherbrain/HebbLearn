@@ -3,7 +3,7 @@ import math
 import numpy as np
 from scipy import misc
 import matplotlib.pyplot as plt
-
+import cv2
 
 
 # rgb2gray
@@ -27,7 +27,72 @@ def LoadImage(file_name):
 #
 # file_name : directory of video file to open
 # returns : tensor of image (b&w)
+def LoadVideo(fn):
+    cap = cv2.VideoCapture(fn)
+    num_frames = int(cap.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT))
+    ret, frame = cap.read()
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    num_rows = np.shape(gray)[0]
+    num_cols = np.shape(gray)[1]
+    
+    cap.set(cv2.cv.CV_CAP_PROP_POS_FRAMES,0)
 
+    vid = np.zeros((num_rows, num_cols, num_frames))
+    
+    for f in range(num_frames):
+        ret, frame = cap.read()
+        vid[:,:,f] = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    
+    cap.release()
+
+    return vid
+
+# GenerateVideo
+# 
+# Generates a video from a grayscale numpy array and saves to file
+def GenerateVideo(raw, fn):
+    num_rows = np.shape(raw)[0]
+    num_cols = np.shape(raw)[1]
+    num_frames = np.shape(raw)[2]
+
+    fourcc = cv2.cv.CV_FOURCC(*'XVID')
+    out = cv2.VideoWriter(fn, 1196444237, 20, (num_rows, num_cols))
+    
+    for f in range(num_frames):
+        #can't use normalized image for write
+        processed = (raw[:,:,f]*255.0).astype('uint8')
+        processed = np.repeat(processed,3,axis=1)
+        processed = processed.reshape(num_rows,num_cols,3)
+        out.write(processed)
+    
+    out.release()
+
+
+def DisplayFrames(video):
+    num_rows = np.shape(video)[0]
+    num_cols = np.shape(video)[1]
+    num_frames = np.shape(video)[2]
+    
+    f = 0
+    plt.imshow(video[:,:,f], cmap=plt.get_cmap('gray'))
+    plt.show(block=False)
+    while(True):
+        f = 0
+        print("\033[A                                           \033[A")
+        x = input("Press f: forward, b: back, q: quit  :  ")
+        if (x == "f"):
+            if ((f+1) < num_frames):
+                f = f+1
+        elif (x == "b"):
+            if ((f-1) >= 0):
+                f = f-1
+        elif (x == "q"):
+            break
+        else:
+            f = f
+
+        plt.imshow(video[:,:,f], cmap=plt.get_cmap('gray'))
+        plt.show(block=False)
 
 # KD
 # The Kronecker Delta Function - returns 1,
@@ -193,9 +258,13 @@ class SlidingLinearGHA():
 # correspond to an area of overlap
 class TemporalGHA:
     def LinearGHA(self, in_vec, weights, out_vec, LR):
+        if (np.max(in_vec) ==  0):
+            in_vec = in_vec+.0000001
+        if (np.max(out_vec) == 0):
+            out_vec = out_vec + 0.0000001
         LT = np.tril(np.dot(out_vec, out_vec.T))
         new_weights = weights + LR * (np.dot(out_vec, in_vec.T) - np.dot(LT,weights))
-        return new_weights/np.max(new_weights)
+        return new_weights/np.max(new_weights) 
 
 
     def ResizeFrame(self, im, filter_size):
@@ -228,16 +297,20 @@ class TemporalGHA:
                     col_start = c*filter_size
                     col_end = (c+1)*filter_size
                     
-                    frame = np.zeros(filter_size, filter_size)
-                    for t in range(filter_size):
+                    frame = np.zeros((filter_size, filter_size))
+                    for t in range(np.shape(time_filter)[2]):
                         frame = frame + np.multiply(vid[row_start:row_end, col_start:col_end, f-t], time_filter[:,:,t])
                     in_vec = np.reshape(frame,(filter_size*filter_size,1))
-                    out_vec = self.GetOutput(in_vec, weights)
-                    weights[:,:,w] = self.LinearGHA(in_vec, weights, out_vec, LR)
+                    out_vec = self.GetOutput(in_vec, weights[:,:,w])
+                    weights[:,:,w] = self.LinearGHA(in_vec, weights[:,:,w], out_vec, LR)
                     w = w+1
         return weights
-    
-    
+   
+
+
+    def GetOutput(self, in_vec, weights):
+        return np.dot(weights, in_vec)
+
     
     
     def GetTimeFilter(self, filter_size):
@@ -264,11 +337,11 @@ class TemporalGHA:
         for t in range(num_frames):
             vid[:,:,t] = self.ResizeFrame(input_video[:,:,t], filter_size)
         
-        num_rows = im.shape[0]/filter_size
-        num_cols = im.shape[1]/filter_size
+        num_rows = temp.shape[0]/filter_size
+        num_cols = temp.shape[1]/filter_size
         out_dimension = weights.shape[0]
         output = np.zeros((temp.shape[0],temp.shape[1],num_frames))
-        for f in range(filter_size, num_frame):
+        for f in range(filter_size, num_frames):
             w = 0
             for c in range(num_cols):
                 for r in range(num_rows):
@@ -277,12 +350,12 @@ class TemporalGHA:
                     col_start = c*filter_size
                     col_end = (c+1)*filter_size
                     
-                    frame = np.zeros(filter_size,filter_size)
-                    for t in range(filter_size):
+                    frame = np.zeros((filter_size,filter_size))
+                    for t in range(np.shape(time_filter)[2]):
                         frame = frame + np.multiply(vid[row_start:row_end, col_start:col_end, f-t], time_filter[:,:,t])
 
                     in_vec = np.reshape(frame,(filter_size*filter_size,1))
-                    out_vec = np.dot(weights.T, np.dot(weights[:,:,w], in_vec))
+                    out_vec = np.dot(weights[:,:,w].T, np.dot(weights[:,:,w], in_vec))
                     output[row_start:row_end,col_start:col_end,f] = np.reshape(out_vec,(filter_size,filter_size))
                     w = w + 1
         return output
