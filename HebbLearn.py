@@ -3,7 +3,10 @@ import math
 import numpy as np
 from scipy import misc
 import matplotlib.pyplot as plt
-import cv2
+try:
+	import cv2
+except:
+	pass
 
 
 # rgb2gray
