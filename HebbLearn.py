@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 try:
 	import cv2
 except:
+	print('cv2 not available')
 	pass
 
 
@@ -109,6 +110,22 @@ def KD(m, n):
         d=0;
     return d
 
+
+
+# FixedLinearGHA
+#
+# This class computes a linear generalized hebb 
+# algorithm - the weight matrix contains
+# the weights for each center-surround.
+class FixedLinearGHA():
+
+
+
+# HierarchicalGHA
+#
+#
+class HierarchicalGHA():
+    
 
 
 class SlidingLinearGHA():

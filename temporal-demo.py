@@ -1,4 +1,5 @@
 import sys
+import os
 import HebbLearn as hl
 import numpy as np
 import matplotlib.pyplot as plt
@@ -6,6 +7,9 @@ import cv2
 
 # load video as numpy array
 fn = 'short.avi'
+
+os.path.isfile(fn)
+
 vid = hl.LoadVideo(fn) 
 
 TemporalGHA = hl.TemporalGHA()
