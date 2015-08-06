@@ -11,7 +11,9 @@ f = h5py.File('/scratch/mad573/stl10/unlabeled.mat')
 
 u = f['X'][()]
 
-temp = np.reshape(u, (100000,96,96,3), order='F')
+temp = np.reshape(u, (3,96,96,100000), order='F')
+temp = np.swapaxes(temp,0,2)
+
 
 unlabeled = np.zeros((96,96,100000))
 
