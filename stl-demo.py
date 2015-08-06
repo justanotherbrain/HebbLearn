@@ -6,13 +6,16 @@ import h5py
 
 fl = hl.FixedLinearGHA()
 
+print('==> Loading data')
 f = h5py.File('/scratch/mad573/stl10/unlabeled.mat')
 
 u = f['X'][()]
 
-temp = np.reshape(u, (100000,96,96,3))
+temp = np.reshape(u, (100000,96,96,3), order='F')
 
 unlabeled = np.zeros((96,96,100000))
+
+print('==> Preprocessing data')
 for i in range(100000):
     unlabeled[:,:,i] = hl.rgb2gray(temp[i,:,:,:])
     if np.max(unlabeled[:,:,i])>1:

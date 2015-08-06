@@ -139,7 +139,7 @@ class FixedLinearGHA():
 
 
     def Train(self, raw_data, filter_size, out_dimension, LR):
-        sample_size = np.shape(data)[2]
+        sample_size = np.shape(raw_data)[2]
         # crop video to correct dimensions
         temp = self.ResizeImage(raw_data[:,:,0], filter_size)
         data = np.zeros((np.shape(temp)[0],np.shape(temp)[1],sample_size))
