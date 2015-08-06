@@ -1,3 +1,4 @@
+import sys
 import os
 import math
 import numpy as np
@@ -163,6 +164,8 @@ class FixedLinearGHA():
                     out_vec = self.GetOutput(in_vec, weights[:,:,w])
                     weights[:,:,w] = self.LinearGHA(in_vec, weights[:,:,w], out_vec, LR)
                     w = w+1
+            sys.stdout.write("\rTraining is %f percent complete" % f/sample_size)
+            sys.stdout.flush()
         return weights
 
 
