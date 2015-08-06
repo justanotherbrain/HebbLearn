@@ -19,7 +19,7 @@ unlabeled = np.zeros((96,96,100000))
 
 print('==> Preprocessing data')
 for i in range(100000):
-    unlabeled[:,:,i] = hl.rgb2gray(temp[i,:,:,:])
+    unlabeled[:,:,i] = hl.rgb2gray(temp[:,:,:,i])
     if np.max(unlabeled[:,:,i])>1:
         unlabeled[:,:,i] = unlabeled[:,:,i]/255
 
