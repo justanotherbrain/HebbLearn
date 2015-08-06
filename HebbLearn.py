@@ -178,7 +178,7 @@ class FixedLinearGHA():
 #
 #
 class HierarchicalGHA():
-    
+    a = 0    
 
 
 class SlidingLinearGHA():
