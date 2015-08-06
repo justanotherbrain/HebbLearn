@@ -174,6 +174,27 @@ class FixedLinearGHA():
         return np.dot(weights, in_vec)
 
 
+    def ImageReconstruction(self, image, weights, filter_size, time_filter):
+        # crop video to correct dimensions
+        temp = self.ResizeImage(image, filter_size)
+
+        num_rows = temp.shape[0]/filter_size
+        num_cols = temp.shape[1]/filter_size
+        out_dimension = weights.shape[0]
+        output = np.zeros((temp.shape[0],temp.shape[1]))
+        w = 0
+        for c in range(num_cols):
+            for r in range(num_rows):
+                row_start = r*filter_size
+                row_end = (r+1)*filter_size
+                col_start = c*filter_size
+                col_end = (c+1)*filter_size
+
+                in_vec = np.reshape(image,(filter_size*filter_size,1))
+                out_vec = np.dot(weights[:,:,w].T, np.dot(weights[:,:,w], in_vec))
+                output[row_start:row_end,col_start:col_end,f] = np.reshape(out_vec,(filter_size,filter_size))
+                w = w + 1
+        return output
 
 
 
