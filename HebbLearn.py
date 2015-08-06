@@ -118,6 +118,59 @@ def KD(m, n):
 # algorithm - the weight matrix contains
 # the weights for each center-surround.
 class FixedLinearGHA():
+    def LinearGHA(self, in_vec, weights, out_vec, LR):
+        if (np.max(in_vec) ==  0):
+            in_vec = in_vec+.0000001
+        if (np.max(out_vec) == 0):
+            out_vec = out_vec + 0.0000001
+        LT = np.tril(np.dot(out_vec, out_vec.T))
+        new_weights = weights + LR * (np.dot(out_vec, in_vec.T) - np.dot(LT,weights))
+        return new_weights/np.max(new_weights)
+
+
+    def ResizeImage(self, im, filter_size):
+        return im[0:(im.shape[0]-(im.shape[0]%filter_size)),0:(im.shape[1]-(im.shape[0]%filter_size))]
+
+
+    def InitializeWeights(self, im, filter_size, out_dimension):
+        num_rows = im.shape[0]/filter_size
+        num_cols = im.shape[1]/filter_size
+        return np.random.rand(out_dimension,(filter_size*filter_size),num_rows*num_cols)
+
+
+    def Train(self, raw_data, filter_size, out_dimension, LR):
+        sample_size = np.shape(data)[2]
+        # crop video to correct dimensions
+        temp = self.ResizeImage(raw_data[:,:,0], filter_size)
+        data = np.zeros((np.shape(temp)[0],np.shape(temp)[1],sample_size))
+        for t in range(num_frames):
+            data[:,:,t] = self.ResizeImage(raw_data[:,:,t], filter_size)
+
+        num_rows = data.shape[0]/filter_size
+        num_cols = data.shape[1]/filter_size
+        weights = self.InitializeWeights(data[:,:,0], filter_size, out_dimension)
+        for f in range(filter_size, sample_size):
+            w = 0
+            for c in range(num_cols-1):
+                for r in range(num_rows-1):
+                    row_start = r*filter_size
+                    row_end = (r+1)*filter_size
+                    col_start = c*filter_size
+                    col_end = (c+1)*filter_size
+
+                    img = np.zeros((filter_size, filter_size))
+                    in_vec = np.reshape(img,(filter_size*filter_size,1))
+                    out_vec = self.GetOutput(in_vec, weights[:,:,w])
+                    weights[:,:,w] = self.LinearGHA(in_vec, weights[:,:,w], out_vec, LR)
+                    w = w+1
+        return weights
+
+
+
+    def GetOutput(self, in_vec, weights):
+        return np.dot(weights, in_vec)
+
+
 
 
 
