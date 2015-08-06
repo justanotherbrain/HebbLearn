@@ -35,6 +35,7 @@ else:
     out_dimension = 8
     LR = .000001
 
+print('==> Training')
 weights = fl.Train(unlabeled, filter_size, out_dimension, LR)
 
 output = fl.ImageReconstruction(unlabeled[:,:,0], weights, filter_size)

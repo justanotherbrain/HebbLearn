@@ -143,7 +143,7 @@ class FixedLinearGHA():
         # crop video to correct dimensions
         temp = self.ResizeImage(raw_data[:,:,0], filter_size)
         data = np.zeros((np.shape(temp)[0],np.shape(temp)[1],sample_size))
-        for t in range(num_frames):
+        for t in range(sample_size):
             data[:,:,t] = self.ResizeImage(raw_data[:,:,t], filter_size)
 
         num_rows = data.shape[0]/filter_size
