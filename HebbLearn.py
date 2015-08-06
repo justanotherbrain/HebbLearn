@@ -150,7 +150,7 @@ class FixedLinearGHA():
         num_rows = data.shape[0]/filter_size
         num_cols = data.shape[1]/filter_size
         weights = self.InitializeWeights(data[:,:,0], filter_size, out_dimension)
-        for f in range(filter_size, sample_size):
+        for f in range(sample_size):
             w = 0
             for c in range(num_cols-1):
                 for r in range(num_rows-1):
@@ -159,12 +159,13 @@ class FixedLinearGHA():
                     col_start = c*filter_size
                     col_end = (c+1)*filter_size
 
-                    img = np.zeros((filter_size, filter_size))
+                    img = data[row_start:row_end, col_start:col_end, f]
                     in_vec = np.reshape(img,(filter_size*filter_size,1))
                     out_vec = self.GetOutput(in_vec, weights[:,:,w])
                     weights[:,:,w] = self.LinearGHA(in_vec, weights[:,:,w], out_vec, LR)
                     w = w+1
-            sys.stdout.write("\rTraining is %f percent complete" % f/sample_size)
+            pc = ((f+.0)/sample_size)*100
+            sys.stdout.write("\rTraining is %f percent complete" % pc)
             sys.stdout.flush()
         return weights
 
@@ -174,14 +175,14 @@ class FixedLinearGHA():
         return np.dot(weights, in_vec)
 
 
-    def ImageReconstruction(self, image, weights, filter_size, time_filter):
+    def ImageReconstruction(self, image, weights, filter_size):
         # crop video to correct dimensions
-        temp = self.ResizeImage(image, filter_size)
+        image = self.ResizeImage(image, filter_size)
 
-        num_rows = temp.shape[0]/filter_size
-        num_cols = temp.shape[1]/filter_size
+        num_rows = image.shape[0]/filter_size
+        num_cols = image.shape[1]/filter_size
         out_dimension = weights.shape[0]
-        output = np.zeros((temp.shape[0],temp.shape[1]))
+        output = np.zeros((image.shape[0],image.shape[1]))
         w = 0
         for c in range(num_cols):
             for r in range(num_rows):
@@ -190,9 +191,10 @@ class FixedLinearGHA():
                 col_start = c*filter_size
                 col_end = (c+1)*filter_size
 
-                in_vec = np.reshape(image,(filter_size*filter_size,1))
+                frame = image[row_start:row_end, col_start:col_end]
+                in_vec = np.reshape(frame,(filter_size*filter_size,1))
                 out_vec = np.dot(weights[:,:,w].T, np.dot(weights[:,:,w], in_vec))
-                output[row_start:row_end,col_start:col_end,f] = np.reshape(out_vec,(filter_size,filter_size))
+                output[row_start:row_end,col_start:col_end] = np.reshape(out_vec,(filter_size,filter_size))
                 w = w + 1
         return output
 
