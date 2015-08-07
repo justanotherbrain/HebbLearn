@@ -32,13 +32,15 @@ if len(sys.argv)>1:
     out_dimension = int(sys.argv[3])
     LR = float(sys.argv[4])
 else:
-    filter_size = 8
+    filter_size = 6
     iterations = 2
-    out_dimension = 8
+    out_dimension = 10
     LR = .0000000001
 
 print('==> Training')
 weights = fl.Train(unlabeled, filter_size, out_dimension, LR)
+
+np.save('stl-weights.npy',weights)
 
 output = fl.ImageReconstruction(unlabeled[:,:,0], weights, filter_size)
 plt.imshow(output, cmap=plt.get_cmap('gray'))

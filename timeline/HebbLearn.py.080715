@@ -10,13 +10,6 @@ except:
 	print('cv2 not available')
 	pass
 
-# Global parameters
-
-# Nonlinearity options
-LINEAR = 1
-TANH = 2
-
-
 
 # rgb2gray
 # luminance preserving rgb2gray conversion
@@ -204,103 +197,6 @@ class FixedLinearGHA():
                 output[row_start:row_end,col_start:col_end] = np.reshape(out_vec,(filter_size,filter_size))
                 w = w + 1
         return output
-
-
-# NonlinearGHA
-#
-# This class computes a nonlinear generalized hebb 
-# algorithm - the weight matrix contains
-# the weights for each receptive-field.
-class NonlinearGHA():
-    def GHA(self, in_vec, weights, out_vec, LR, nonlinearity):
-        if (np.max(in_vec) ==  0):
-            in_vec = in_vec+.0000001
-        if (np.max(out_vec) == 0):
-            out_vec = out_vec + 0.0000001
-        LT = np.tril(np.dot(out_vec, out_vec.T))
-        if (nonlinearity == LINEAR):
-            new_weights = weights + LR * (np.dot(out_vec, in_vec.T) - np.dot(LT,weights))
-        elif (nonlinearity == TANH):
-            #new_weights = weights + LR * np.tanh((np.dot(out_vec, in_vec.T) - np.dot(LT,weights)))
-            new_weights = weights + LR * (np.dot(out_vec, in_vec.T) - np.dot(LT,weights))
-        return new_weights/np.max(new_weights)
-
-
-    def ResizeImage(self, im, filter_size):
-        return im[0:(im.shape[0]-(im.shape[0]%filter_size)),0:(im.shape[1]-(im.shape[0]%filter_size))]
-
-
-    def InitializeWeights(self, im, filter_size, out_dimension):
-        num_rows = im.shape[0]/filter_size
-        num_cols = im.shape[1]/filter_size
-        return np.random.rand(out_dimension,(filter_size*filter_size),num_rows*num_cols)
-
-
-    def GetOutput(self, in_vec, weights, nonlinearity):
-        if (nonlinearity == LINEAR):
-            return np.dot(weights, in_vec)
-        elif (nonlinearity == TANH):
-            return np.tanh(np.dot(weights, in_vec))
-
-
-    def Train(self, raw_data, filter_size, out_dimension, LR, nonlinearity):
-        sample_size = np.shape(raw_data)[2]
-        # crop video to correct dimensions
-        temp = self.ResizeImage(raw_data[:,:,0], filter_size)
-        data = np.zeros((np.shape(temp)[0],np.shape(temp)[1],sample_size))
-        for t in range(sample_size):
-            data[:,:,t] = self.ResizeImage(raw_data[:,:,t], filter_size)
-
-        num_rows = data.shape[0]/filter_size
-        num_cols = data.shape[1]/filter_size
-        weights = self.InitializeWeights(data[:,:,0], filter_size, out_dimension)
-        for f in range(sample_size):
-            w = 0
-            for c in range(num_cols-1):
-                for r in range(num_rows-1):
-                    row_start = r*filter_size
-                    row_end = (r+1)*filter_size
-                    col_start = c*filter_size
-                    col_end = (c+1)*filter_size
-
-                    img = data[row_start:row_end, col_start:col_end, f]
-                    in_vec = np.reshape(img,(filter_size*filter_size,1))
-                    out_vec = self.GetOutput(in_vec, weights[:,:,w], nonlinearity)
-                    weights[:,:,w] = self.GHA(in_vec, weights[:,:,w], out_vec, LR, nonlinearity)
-                    w = w+1
-            
-            pc = ((f+.0)/sample_size)*100
-            sys.stdout.write("\rTraining is %f percent complete" % pc)
-            sys.stdout.flush()
-        return weights
-
-    def ImageReconstruction(self, image, weights, filter_size, nonlinearity):
-        # crop video to correct dimensions
-        image = self.ResizeImage(image, filter_size)
-
-        num_rows = image.shape[0]/filter_size
-        num_cols = image.shape[1]/filter_size
-        out_dimension = weights.shape[0]
-        output = np.zeros((image.shape[0],image.shape[1]))
-        w = 0
-        for c in range(num_cols):
-            for r in range(num_rows):
-                row_start = r*filter_size
-                row_end = (r+1)*filter_size
-                col_start = c*filter_size
-                col_end = (c+1)*filter_size
-
-                frame = image[row_start:row_end, col_start:col_end]
-                in_vec = np.reshape(frame,(filter_size*filter_size,1))
-                if (nonlinearity == LINEAR):
-                    out_vec = np.dot(weights[:,:,w].T, np.dot(weights[:,:,w], in_vec))
-                elif (nonlinearity == TANH):
-                    out_vec = np.tanh(np.dot(weights[:,:,w].T, np.dot(weights[:,:,w], in_vec)))
-                output[row_start:row_end,col_start:col_end] = np.reshape(out_vec,(filter_size,filter_size))
-                w = w + 1
-        return output
-
-
 
 
 
