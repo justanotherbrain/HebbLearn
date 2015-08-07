@@ -35,7 +35,7 @@ else:
     filter_size = 8
     iterations = 2
     out_dimension = 8
-    LR = .000001
+    LR = .0000000001
 
 print('==> Training')
 weights = fl.Train(unlabeled, filter_size, out_dimension, LR)
