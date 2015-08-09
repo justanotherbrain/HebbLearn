@@ -3,7 +3,11 @@ import os.path
 import HebbLearn as hl
 import numpy as np
 import matplotlib.pyplot as plt
-import h5py
+try:
+    import h5py
+except:
+    print('h5py cannot be loaded - may cause error')
+    pass
 
 
 fl = hl.NonlinearGHA()
@@ -45,24 +49,24 @@ unlabeled = unlabeled/pop_std
 
 if len(sys.argv)>1:
     filter_size = int(sys.argv[1])
-    iterations = int(sys.argv[2])
-    out_dimension = int(sys.argv[3])
-    LR = float(sys.argv[4])
+    out_dimension = int(sys.argv[2])
+    LR = float(sys.argv[3])
+    n_samples = int(sys.argv[4])
 else:
-    filter_size = 6
-    iterations = 2
-    out_dimension = 15
+    filter_size = 8
+    out_dimension = 8
     LR = 1
+    n_samples = 100000
 
 nonlinearity = hl.TANH
 print('==> Training')
-weights = fl.Train(unlabeled, filter_size, out_dimension, LR, nonlinearity)
+weights = fl.Train(unlabeled[:,:,:n_samples], filter_size, out_dimension, LR, nonlinearity)
 
 np.save('nl-stl-weights.npy',weights)
 
 output = fl.ImageReconstruction(unlabeled[:,:,0], weights, filter_size, nonlinearity)
-#plt.imshow(output, cmap=plt.get_cmap('gray'))
-#plt.show()
+plt.imshow(output, cmap=plt.get_cmap('gray'))
+plt.show()
 
 
 
