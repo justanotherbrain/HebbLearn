@@ -7,5 +7,6 @@
 #PBS -o localhost:/scratch/mad573/${PBS_JOBNAME}.o${PBS_JOBID}
 module load scipy
 cd ~/research/hebblearn
-python demo.py 6 3 10 1 100000
+#python demo.py 6 3 10 1 100000
+python multiplayer-demo.py
 exit 0;

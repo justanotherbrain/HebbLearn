@@ -305,11 +305,239 @@ class NonlinearGHA():
 
 
 
-# HierarchicalGHA
+# MultilayerGHA
 #
+# Initialize with the number of layers.
+# All of the following parameters are arrays with length equal to num_layers
 #
-class HierarchicalGHA():
-    a = 0    
+class MultilayerGHA():
+    def __init__(self, num_layers=1, filter_size=6, step_size=3, out_dim=10, LR=1, nonlinearity=TANH):
+        # make sure everything lines up
+        if (num_layers != len(filter_size)):
+            print('filter_size must be array with length num_layers')
+        elif (num_layers != len(step_size)):
+            print('step_size must be array with length num_layers')
+        elif (num_layers != len(out_dim)):
+            print('out_dim must be array with length num_layers')
+        elif (num_layers != len(LR)):
+            print('LR must be array with length num_layers')
+        elif (num_layers != len(nonlinearity)):
+            print('nonlinearity must be array with length num_layers')
+        
+        # set up data structure
+        self.layers = []
+        for l in range(num_layers):
+            self.layers.append({'layer': l, 'filter_size': filter_size[l], 'step_size': step_size[l], 'out_dim': out_dim[l], 'LR': LR[l], 'nonlinearity': nonlinearity[l]})
+
+
+
+    # Train
+    # Train with the initialized layer structure
+    #
+    def Train(self, data):
+        input_features = data
+        for l in range(len(self.layers)):
+            fs = self.layers[l]['filter_size']
+            ss = self.layers[l]['step_size']
+            od = self.layers[l]['out_dim']
+            lr = self.layers[l]['LR']
+            nl = self.layers[l]['nonlinearity']
+           
+            print('==> Training Layer ' + str(l))
+            weights = self.TrainLayer(data, fs, ss, od, lr, nl)
+
+            self.layers[l]['weights'] = weights
+
+            print('')
+            print('==> Calculating Output of Layer ' + str(l))
+            input_features = self.GetLayerOutput(input_features, weights, fs, ss, nl)
+        return self.layers
+
+
+    # ImageReconstruction
+    #
+    def ImageReconstruction(self, image, layers):
+        input_features = image
+        for l in range(len(layers)):
+            fs = layers[l]['filter_size']
+            ss = layers[l]['step_size']
+            od = layers[l]['out_dim']
+            nl = layers[l]['nonlinearity']
+            weights = layers[l]['weights']
+
+            input_features = self.GetLayerOutput(input_features, weights, fs, ss, nl)
+        return input_features
+
+
+
+
+    # GHA
+    #
+    def GHA(self, in_vec, weights, out_vec, LR, nonlinearity):
+        if (np.max(in_vec) ==  0):
+            in_vec = in_vec+.0000001
+        if (np.max(out_vec) == 0):
+            out_vec = out_vec + 0.0000001
+        LT = np.tril(np.dot(out_vec, out_vec.T))
+        if (nonlinearity == LINEAR):
+            new_weights = weights + LR * (np.dot(out_vec, in_vec.T) - np.dot(LT,weights))
+        elif (nonlinearity == TANH):
+            #new_weights = weights + LR * np.tanh((np.dot(out_vec, in_vec.T) - np.dot(LT,weights)))
+            new_weights = weights + LR * (np.dot(out_vec, in_vec.T) - np.dot(LT,weights))
+        return new_weights/np.max(new_weights)
+
+
+
+
+    # ResizeImage
+    #
+    def ResizeImage(self, im, filter_size):
+        return im[0:(im.shape[0]-(im.shape[0]%filter_size)),0:(im.shape[1]-(im.shape[0]%filter_size))]
+
+    
+    # initializeWeights
+    #
+    def InitializeWeights(self, im, filter_size, step_size, out_dimension):
+        row_steps = ((im.shape[0] - filter_size)/step_size) + 1
+        col_steps = ((im.shape[1] - filter_size)/step_size) + 1
+        return np.random.rand(out_dimension,(filter_size*filter_size),row_steps*col_steps)
+
+
+    # GetOutput
+    #
+    def GetOutput(self, in_vec, weights, nonlinearity):
+        if (nonlinearity == LINEAR):
+            return np.dot(weights, in_vec)
+        elif (nonlinearity == TANH):
+            return np.tanh(np.dot(weights, in_vec))
+
+
+    #GetLayerOutput
+    #
+    def GetLayerOutput(self, input, weights, filter_size, step_size, nonlinearity):
+        try:
+            sample_size = np.shape(input)[2]
+            temp = self.ResizeImage(input[:,:,0], filter_size)
+            data = np.zeros((np.shape(temp)[0], np.shape(temp)[1], sample_size))
+            for t in range(sample_size):
+                data[:,:,t] = self.ResizeImage(input[:,:,t], filter_size)
+
+        except:
+            sample_size = 1 # for reconstructing single image
+            temp = self.ResizeImage(input, filter_size)
+            data = np.zeros((np.shape(temp)[0], np.shape(temp)[1], sample_size))
+            data[:,:,0] = self.ResizeImage(input, filter_size)
+
+        layer_output = np.zeros((np.shape(temp)[0], np.shape(temp)[1], sample_size))
+        for t in range(sample_size):
+            layer_output[:,:,t] = self.ImageLayerReconstruction(data[:,:,t], weights, filter_size, step_size, nonlinearity)
+        
+        return layer_output
+ 
+
+
+    # GetLayerOutputDEV
+    #
+    def GetLayerOutputDEV(self, input, weights, filter_size, step_size, nonlinearity):
+        sample_size = np.shape(input)[2]
+        # crop video to correct dimensions
+        temp = self.ResizeImage(input[:,:,0], filter_size)
+        data = np.zeros((np.shape(temp)[0], np.shape(temp)[1], sample_size))
+        for t in range(sample_size):
+            data[:,:,t] = self.ResizeImage(raw_data[:,:,t], filter_size)
+
+        row_steps = ((data.shape[0] - filter_size)/step_size) + 1
+        col_steps = ((data.shape[1] - filter_size)/step_size) + 1
+
+        out_dimension = weights[:,:,0].shape[0]
+        output = np.zeros((image.shape[0],image.shape[1]))
+        w = 0
+        for c in range(col_steps):
+            for r in range(row_steps):
+                row_start = r*step_size
+                row_end = r*step_size + filter_size
+                col_start = c*step_size
+                col_end = c*step_size + filter_size
+
+                frame = image[row_start:row_end, col_start:col_end]
+                in_vec = np.reshape(frame,(filter_size*filter_size,1))
+                if (nonlinearity == LINEAR):
+                    out_vec = np.dot(weights[:,:,w].T, np.dot(weights[:,:,w], in_vec))
+                elif (nonlinearity == TANH):
+                    out_vec = np.tanh(np.dot(weights[:,:,w].T, np.dot(weights[:,:,w], in_vec)))
+                output[row_start:row_end,col_start:col_end] = output[row_start:row_end, col_start:col_end] + np.reshape(out_vec,(filter_size,filter_size))
+                w = w + 1
+        return output
+        
+
+
+
+    # TrainLayer
+    #
+    def TrainLayer(self, raw_data, filter_size, step_size, out_dimension, LR, nonlinearity):
+        sample_size = np.shape(raw_data)[2]
+        # crop video to correct dimensions
+        temp = self.ResizeImage(raw_data[:,:,0], filter_size)
+        data = np.zeros((np.shape(temp)[0],np.shape(temp)[1],sample_size))
+        for t in range(sample_size):
+            data[:,:,t] = self.ResizeImage(raw_data[:,:,t], filter_size)
+
+        row_steps = ((data.shape[0] - filter_size)/step_size) + 1
+        col_steps = ((data.shape[1] - filter_size)/step_size) + 1
+        weights = self.InitializeWeights(data[:,:,0], filter_size, step_size, out_dimension)
+        for f in range(sample_size):
+            w = 0
+            for c in range(col_steps):
+                for r in range(row_steps):
+                    row_start = r*step_size
+                    row_end = r*step_size + filter_size
+                    col_start = c*step_size
+                    col_end = c*step_size + filter_size
+
+                    img = data[row_start:row_end, col_start:col_end, f]
+                    in_vec = np.reshape(img,(filter_size*filter_size,1))
+                    out_vec = self.GetOutput(in_vec, weights[:,:,w], nonlinearity)
+                    weights[:,:,w] = self.GHA(in_vec, weights[:,:,w], out_vec, LR, nonlinearity)
+                    w = w+1
+
+            pc = ((f+.0)/sample_size)*100
+            sys.stdout.write("\rTraining is %f percent complete" % pc)
+            sys.stdout.flush()
+        return weights
+
+
+
+    # ImageLayerReconstruction
+    #
+    def ImageLayerReconstruction(self, image, weights, filter_size, step_size, nonlinearity):
+        # crop video to correct dimensions
+        image = self.ResizeImage(image, filter_size)
+
+        row_steps = ((image.shape[0] - filter_size)/step_size) + 1
+        col_steps = ((image.shape[1] - filter_size)/step_size) + 1
+
+        out_dimension = weights.shape[0]
+        output = np.zeros((image.shape[0],image.shape[1]))
+        w = 0
+        for c in range(col_steps):
+            for r in range(row_steps):
+                row_start = r*step_size
+                row_end = r*step_size + filter_size
+                col_start = c*step_size
+                col_end = c*step_size + filter_size
+
+                frame = image[row_start:row_end, col_start:col_end]
+                in_vec = np.reshape(frame,(filter_size*filter_size,1))
+                if (nonlinearity == LINEAR):
+                    out_vec = np.dot(weights[:,:,w].T, np.dot(weights[:,:,w], in_vec))
+                elif (nonlinearity == TANH):
+                    out_vec = np.tanh(np.dot(weights[:,:,w].T, np.dot(weights[:,:,w], in_vec)))
+                output[row_start:row_end,col_start:col_end] = output[row_start:row_end, col_start:col_end] + np.reshape(out_vec,(filter_size,filter_size))
+                w = w + 1
+        return output
+
+
+
 
 
 class SlidingLinearGHA():

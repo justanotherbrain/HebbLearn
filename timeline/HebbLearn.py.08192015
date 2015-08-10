@@ -305,7 +305,7 @@ class NonlinearGHA():
 
 
 
-# LayersGHA
+# HierarchicalGHA
 #
 #
 class HierarchicalGHA():
