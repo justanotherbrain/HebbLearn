@@ -67,8 +67,8 @@ weights = fl.Train(unlabeled[:,:,:n_samples], filter_size, step_size, out_dimens
 np.save('nl-stl-dev-weights.npy',weights)
 
 output = fl.ImageReconstruction(unlabeled[:,:,0], weights, filter_size, step_size, nonlinearity)
-plt.imshow(output, cmap=plt.get_cmap('gray'))
-plt.show()
+#plt.imshow(output, cmap=plt.get_cmap('gray'))
+#plt.show()
 
 
 
