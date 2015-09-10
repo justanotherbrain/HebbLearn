@@ -298,6 +298,7 @@ class NonlinearGHA():
                 elif (nonlinearity == TANH):
                     out_vec = np.tanh(np.dot(weights[:,:,w].T, np.dot(weights[:,:,w], in_vec)))
                 output[row_start:row_end,col_start:col_end] = output[row_start:row_end, col_start:col_end] + np.reshape(out_vec,(filter_size,filter_size))
+
                 w = w + 1
         return output
 
@@ -351,7 +352,13 @@ class MultilayerGHA():
             print('')
             print('==> Calculating Output of Layer ' + str(l))
             input_features = self.GetLayerOutput(input_features, weights, fs, ss, nl)
-        return self.layers
+            pop_mean = np.mean(input_features)
+            input_features = input_features - pop_mean
+            
+            pop_std = np.std(input_features)
+            input_features = input_features/pop_std
+
+        return self.layers, input_features
 
 
     # ImageReconstruction

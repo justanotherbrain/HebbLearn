@@ -8,5 +8,5 @@
 module load scipy
 cd ~/research/hebblearn
 #python demo.py 6 3 10 1 100000
-python multiplayer-demo.py
+python multilayer-demo.py
 exit 0;

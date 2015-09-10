@@ -57,20 +57,22 @@ else:
     ss = [3, 2]
     od = [10, 8]
     lr = [1, 1]
-    n_samples = 100000
+    n_samples = 500
 
 nl = [hl.TANH, hl.TANH]
 
 ml = hl.MultilayerGHA(num_layers=2, filter_size=fs, step_size=ss, out_dim=od, LR=lr, nonlinearity=nl)
 
 print('==> Training')
-layers = ml.Train(unlabeled[:,:,:n_samples])
+layers, output = ml.Train(unlabeled[:,:,:n_samples])
 
-np.save('multi-layers.npy',layers)
+np.save('multi-layers-small.npy',layers)
 
-output = ml.ImageReconstruction(unlabeled[:,:,0], layers)
-#plt.imshow(output[:,:,0], cmap=plt.get_cmap('gray'))
-#plt.show()
+
+#print('==> Generating Output of Network')
+#output = ml.ImageReconstruction(unlabeled, layers)
+plt.imshow(output[:,:,112], cmap=plt.get_cmap('gray'))
+plt.show()
 
 
 
