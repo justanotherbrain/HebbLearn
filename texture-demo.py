@@ -64,7 +64,8 @@ else:
     LR = 1
     n_samples = 500
 
-nonlinearity = hl.TANH
+nonlinearity = hl.LINEAR
+LR=0
 #print('==> Training')
 #random_k = fl.Train(random[:,:,:n_samples], filter_size, step_size, out_dimension, LR, nonlinearity)
 #textures_k = fl.Train(textures[:,:,:n_samples], filter_size, step_size, out_dimension, LR, nonlinearity)
@@ -83,6 +84,7 @@ diff_mean = (np.mean(rand_vex[:n_samples,:], axis=0) - np.mean(tex_vex[:n_sample
 test = np.concatenate((tex_vex[500:600,:], rand_vex[500:600,:]), axis=0)
 y = np.ones((200,1))
 y[:100]=-1
+shuff = np.random.permutation(200)
 test = test[shuff,:]
 y = y[shuff]
 corr = 0
@@ -90,6 +92,18 @@ corr = 0
 print('==> Training')
 k_tex = fl.Train(textures[:,:,:n_samples], filter_size, step_size, out_dimension, LR, nonlinearity)
 k_rand = fl.Train(random[:,:,:n_samples], filter_size, step_size, out_dimension, LR, nonlinearity)
+
+tex_pop = np.zeros((512,512))
+rand_pop = np.zeros((512,512))
+for i in range(n_samples):
+    tex_pop = tex_pop + fl.ImageReconstruction(textures[:,:,i], np.reshape(k_tex,(1,262144,1)), filter_size, step_size, nonlinearity)
+    rand_pop = rand_pop + fl.ImageReconstruction(random[:,:,i], np.reshape(k_rand,(1,262144,1)), filter_size, step_size, nonlinearity)
+
+tpv = np.reshape(tex_pop, (512*512,1), order='F').T/n_samples
+rpv = np.reshape(rand_pop, (512*512,1), order='F').T/n_samples
+diff_mean = (np.mean(rand_vex[:n_samples,:], axis=0) - np.mean(tex_vex[:n_samples,:], axis=0))
+
+
 
 k_tex = k_tex[:,:,0]
 k_rand = k_rand[:,:,0]
@@ -102,7 +116,9 @@ w = np.multiply(k[:,0],diff_mean) # works because k is vector and
 for i in range(200):
     #x = np.reshape(test[:,:,i],262144, order='F') # 512*512
     x = test[i,:]
-    yhat = np.sign(np.dot(w,x.T))
+    kx = np.reshape(fl.ImageReconstruction(np.reshape(x,(512,512),order='F'), np.reshape(k,(1,262144,1)), filter_size, step_size, nonlinearity),262144, order='F')
+    #yhat = np.sign(np.dot(w,x.T))
+    yhat = np.sign(np.dot(w,kx.T))
     if (yhat == y[i]):
         corr = corr+1
 
