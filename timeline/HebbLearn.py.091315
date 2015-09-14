@@ -15,7 +15,6 @@ except:
 # Nonlinearity options
 LINEAR = 1
 TANH = 2
-DIVTANH = 3
 
 
 # rgb2gray
@@ -218,7 +217,12 @@ class NonlinearGHA():
         if (np.max(out_vec) == 0):
             out_vec = out_vec + 0.0000001
         LT = np.tril(np.dot(out_vec, out_vec.T))
-        new_weights = weights + LR * (np.dot(out_vec, in_vec.T) - np.dot(LT,weights))
+        if (nonlinearity == LINEAR):
+            new_weights = weights + LR * (np.dot(out_vec, in_vec.T) - np.dot(LT,weights))
+        elif (nonlinearity == TANH):
+            #new_weights = weights + LR * np.tanh((np.dot(out_vec, in_vec.T) - np.dot(LT,weights)))
+            new_weights = weights + LR * (np.dot(out_vec, in_vec.T) - np.dot(LT,weights))
+        
         return new_weights/np.max(new_weights)
 
 
@@ -237,9 +241,7 @@ class NonlinearGHA():
             return np.dot(weights, in_vec)
         elif (nonlinearity == TANH):
             return np.tanh(np.dot(weights, in_vec))
-        elif (nonlinearity == DIVTANH):
-            tmp = np.tanh(np.dot(weights, in_vec))/(1 + np.sum(np.square(np.tanh(np.dot(weights,in_vec)))))
-            return tmp 
+
 
     def Train(self, raw_data, filter_size, step_size, out_dimension, LR, nonlinearity):
         sample_size = np.shape(raw_data)[2]
@@ -295,9 +297,6 @@ class NonlinearGHA():
                     out_vec = np.dot(weights[:,:,w].T, np.dot(weights[:,:,w], in_vec))
                 elif (nonlinearity == TANH):
                     out_vec = np.tanh(np.dot(weights[:,:,w].T, np.dot(weights[:,:,w], in_vec)))
-                elif (nonlinearity == DIVTANH):
-                    out_vec = np.tanh(np.dot(weights[:,:,w].T, np.dot(weights[:,:,w], in_vec)))/(1 + np.sum(np.square(np.tanh(np.dot(weights[:,:,w].T,np.dot(weights[:,:,w],in_vec))))))
-
                 output[row_start:row_end,col_start:col_end] = output[row_start:row_end, col_start:col_end] + np.reshape(out_vec,(filter_size,filter_size))
 
                 w = w + 1

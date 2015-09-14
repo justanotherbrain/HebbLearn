@@ -66,12 +66,12 @@ if len(sys.argv)>1:
     n_samples = int(sys.argv[5])
 else:
     filter_size = 96
-    step_size = 96
+    step_size = 96 
     out_dimension = 1
     LR = 1
     n_samples = 500
 
-nonlinearity = hl.DIVTAN
+nonlinearity = hl.DIVTANH
 LR=1
 
 
@@ -109,30 +109,50 @@ k_b = fl.Train(b_train[:,:,:n_train], filter_size, step_size, out_dimension, LR,
 
 
 
-k_a = k_a[:,:,0]
-k_b = k_b[:,:,0]
+#k_a = k_a[:,:,0]
+#k_b = k_b[:,:,0]
+kdim = np.shape(k_a)
+ka = np.zeros((kdim[0],kdim[1]*kdim[2])) #realign filters
+kb = np.zeros((kdim[0],kdim[1]*kdim[2]))
+for i in range(kdim[2]):
+    for j in range(kdim[0]):
+        ka[j,i*kdim[1]:(i+1)*kdim[1]]=k_a[j,:,i]
+        kb[j,i*kdim[1]:(i+1)*kdim[1]]=k_b[j,:,i]
 
-k = np.multiply(0.5,k_a+k_b).T
 
-w = np.multiply(k[:,0],diff_mean) # works because k is vector and 
+k = np.multiply(0.5,ka+kb).T
 
-for i in range(np.shape(test)[0]):
+#w = np.dot(k[:,0],np.diag(diff_mean))
+w = np.zeros((kdim[0], kdim[1]*kdim[2]))
+for i in range(kdim[0]):
+    w[i,:] = np.multiply(k[:,i],diff_mean) # works since both are vectors
+
+
+print('')
+print('')
+print('==> Testing')
+n_test = np.shape((test))[0]
+yhs = np.zeros((np.shape(test)[0],1))
+for i in range(n_test):
     #x = np.reshape(test[i,:],96*96, order='F') 
     x = test[i,:]
-    #kx = np.reshape(fl.ImageReconstruction(np.reshape(x,(96,96),order='F'), np.reshape(k,(out_dimension,96*96,1)), filter_size, step_size, nonlinearity),96*96, order='F')
-    yhat = np.sign(np.dot(w,x.T))
-    #yhat = np.sign(np.dot(w,kx.T))
+    #kx = np.reshape(fl.ImageReconstruction(np.reshape(x,(96,96),order='F'), np.reshape(k,(kdim[0],kdim[1],kdim[2])), filter_size, step_size, nonlinearity),96*96, order='F')
+    #yhat = np.sign(np.dot(w,x.T))
+    yhat = np.sign(np.sum(np.dot(w,x.T)))
     if (yhat == y[i]):
         corr = corr+1.
+    pt = ((i+.0)/n_test)*100
+    sys.stdout.write("\rTesting is %f percent complete" % pt)
+    sys.stdout.flush()
 
 pc = corr/np.shape(test)[0]
-print()
+print('')
+print('')
 if (pc < 0.5):
     print('flipped')
     pc = 1.0-pc
 print('==> Percent Correct')
 print(pc)
-
 
 
 
