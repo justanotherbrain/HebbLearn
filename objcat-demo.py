@@ -6,8 +6,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 fl = hl.NonlinearGHA()
-cat_a = '8' #monkey
-cat_b = '10' #truck
+cat_a = '1' #monkey
+cat_b = '2' #truck
 
 def resize(data):
     tmp = np.reshape(data, (np.shape(data)[0],96,96,3), order='F')
@@ -15,7 +15,28 @@ def resize(data):
     tmp = np.swapaxes(tmp,1,2)
     tmp = np.swapaxes(tmp,2,3)
     return tmp
-    
+
+
+def realign(image, filter_size, step_size):
+    im = fl.ResizeImage(image, filter_size)
+    #realigned = np.zeros((im.shape[0]*im.shape[1],1))
+    row_steps = ((im.shape[0] - filter_size)/step_size)+1
+    col_steps = ((im.shape[1] - filter_size)/step_size)+1
+    realigned = np.zeros((row_steps*filter_size*col_steps*filter_size,1))
+    s = 0
+    fs2 = filter_size*filter_size
+    for c in range(col_steps):
+        for r in range(row_steps):
+            rs = r*step_size
+            re = r*step_size + filter_size
+            cs = c*step_size
+            ce = c*step_size + filter_size
+
+            patch = im[rs:re, cs:ce]
+            map = np.reshape(patch,(fs2,1))
+            realigned[s*fs2:(s+1)*fs2] = map
+    return realigned
+
 
 if os.path.isfile('stl-data/c1_train.npy'):
     print('==> Load previously saved textures data')
@@ -65,15 +86,16 @@ if len(sys.argv)>1:
     LR = float(sys.argv[4])
     n_samples = int(sys.argv[5])
 else:
-    filter_size = 96
-    step_size = 96 
+    filter_size = 4
+    step_size = 2
     out_dimension = 1
     LR = 1
     n_samples = 500
 
-nonlinearity = hl.DIVTANH
+nonlinearity = hl.TANH
+#LR=.000000001
 LR=1
-
+#LR=.5
 
 print('==> Classification performance')
 a_vex = np.reshape(np.concatenate((a_train,a_test),axis=2), (96*96,n_train+n_test), order='F').T
@@ -89,25 +111,9 @@ y = y[shuff]
 corr = 0
 
 
-#plt.imshow(output, cmap=plt.get_cmap('gray'))
-#plt.show()
-
-
 print('==> Training')
 k_a = fl.Train(a_train[:,:,:n_train], filter_size, step_size, out_dimension, LR, nonlinearity)
 k_b = fl.Train(b_train[:,:,:n_train], filter_size, step_size, out_dimension, LR, nonlinearity)
-
-#a_pop = np.zeros((96,96))
-#b_pop = np.zeros((96,96))
-#for i in range(n_samples):
-#    a_pop = a_pop + fl.ImageReconstruction(a_train[:,:,i], np.reshape(k_a,(out_dimension,96*96,1)), filter_size, step_size, nonlinearity)
-#    b_pop = b_pop + fl.ImageReconstruction(b_train[:,:,i], np.reshape(k_b,(out_dimension,96*96,1)), filter_size, step_size, nonlinearity)
-
-#apv = np.reshape(a_pop, (96*96,1), order='F').T/n_train
-#bpv = np.reshape(b_pop, (96*96,1), order='F').T/n_train
-#diff_mean = (np.mean(apv[:n_train,:], axis=0) - np.mean(bpv[:n_train,:], axis=0))
-
-
 
 #k_a = k_a[:,:,0]
 #k_b = k_b[:,:,0]
@@ -119,26 +125,32 @@ for i in range(kdim[2]):
         ka[j,i*kdim[1]:(i+1)*kdim[1]]=k_a[j,:,i]
         kb[j,i*kdim[1]:(i+1)*kdim[1]]=k_b[j,:,i]
 
+ma = np.zeros((kdim[0],kdim[1]*kdim[2]))
+mb = np.zeros((kdim[0],kdim[1]*kdim[2]))
+for j in range(kdim[0]):
+    for i in range(n_train):
+        ma[j,:] = ma[j,:] + np.multiply(ka[j,0], np.tanh(realign(np.reshape(a_vex[i,:], (96,96)), filter_size, step_size).T))
+        mb[j,:] = mb[j,:] + np.multiply(kb[j,0], np.tanh(realign(np.reshape(b_vex[i,:], (96,96)), filter_size, step_size).T))
+
+diff_mean = ma-mb
 
 k = np.multiply(0.5,ka+kb).T
 
 #w = np.dot(k[:,0],np.diag(diff_mean))
 w = np.zeros((kdim[0], kdim[1]*kdim[2]))
 for i in range(kdim[0]):
-    w[i,:] = np.multiply(k[:,i],diff_mean) # works since both are vectors
+    w[i,:] = np.multiply(k[:,i],diff_mean[i,:]) # works since both are vectors
 
-
+#w = np.multiply(k[:,0],diff_mean)
 print('')
 print('')
 print('==> Testing')
 n_test = np.shape((test))[0]
 yhs = np.zeros((np.shape(test)[0],1))
 for i in range(n_test):
-    #x = np.reshape(test[i,:],96*96, order='F') 
-    x = test[i,:]
-    #kx = np.reshape(fl.ImageReconstruction(np.reshape(x,(96,96),order='F'), np.reshape(k,(kdim[0],kdim[1],kdim[2])), filter_size, step_size, nonlinearity),96*96, order='F')
-    #yhat = np.sign(np.dot(w,x.T))
-    yhat = np.sign(np.sum(np.dot(w,x.T)))
+    x = realign(np.reshape(test[i,:],(96,96)), filter_size, step_size)
+    yhat = np.sign(np.dot(w,x))
+    #yhat = np.sign(np.sum(np.dot(w,x.T)))
     if (yhat == y[i]):
         corr = corr+1.
     pt = ((i+.0)/n_test)*100
